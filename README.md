@@ -1,5 +1,7 @@
 # Catherine: Full Body — PC Installer & Launcher
 
+<img width="889" height="532" alt="image" src="https://github.com/user-attachments/assets/36986491-47d3-4e84-a93a-aedfb5265ef0" />
+
 A standalone, all-in-one Windows installer and launcher wrapper that turns your legally dumped PS4 `.pkg` files of **Catherine: Full Body** (`CUSA14836`) into a seamless, native-feeling PC installation.
 
 ## ✨ Features
@@ -17,6 +19,9 @@ A standalone, all-in-one Windows installer and launcher wrapper that turns your 
 5. Use the newly created **Catherine - Full Body** desktop shortcut to play!
 
 ---
+
+<img width="889" height="532" alt="image" src="https://github.com/user-attachments/assets/ae50f815-d9df-4ccc-a588-a2871d15d434" />
+
 
 ## 🎮 Controls (Controller & Keyboard)
 
