@@ -53,7 +53,8 @@ You can rebind any key directly inside the launcher by clicking **⌨ Customize 
 * **Regarding the 30 FPS Lock:** The game engine's puzzle physics are natively tied to a 30 Hz tick rate. For smooth 60/120 FPS without breaking block physics, use **Lossless Scaling (LSFG)** or driver-level **AMD AFMF**.
 
 ## 🙏 Credits & Disclaimer
-* Powered by [**shadPS4**](https://github.com/shadps4-emu/shadPS4) and [**shadPS4Plus**](https://github.com/AzaharPlus/shadPS4Plus).
+* Powered by [**shadPS4**](https://github.com/shadps4-emu/shadPS4).
+* PKGs unpacked with [**shadPS4Plus**](https://github.com/AzaharPlus/shadPS4Plus).
 * **Legal Notice:** This tool contains **zero** copyrighted Atlus/Sega game assets, ROMs, or proprietary Sony keys. You must provide your own legally dumped PlayStation 4 `.pkg` files to use this software.
 
 ## 🛠️ Building from Source
