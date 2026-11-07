@@ -4,7 +4,7 @@
 
 A standalone, all-in-one Windows installer and launcher wrapper that turns your legally dumped PS4 `.pkg` files of **Catherine: Full Body** (`CUSA14836`) into a seamless, native-feeling PC installation.
 
-[**Video Showcase**](https://youtu.be/B8CBTJt_KrA?si=XY2VCjJizXVeSSIO).
+[**Video Showcase**](https://youtu.be/B8CBTJt_KrA?si=XY2VCjJizXVeSSIO)
 
 ## ✨ Features
 * **True All-in-One Setup:** Automatically unpacks your Base Game `.pkg`, merges the Update Patch `.pkg`, and batch-installs all DLC `.pkg` files into a clean `Data\` directory.
@@ -64,3 +64,11 @@ If compiling from source code using `.NET 8 SDK`:
 1. Place a 7-second MP4 named `intro.mp4` in a folder named `Launcher/`.
 2. Compress your configured shadPS4 folder into `Engine.zip` inside the `Launcher/` folder.
 3. Run `dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true`.
+
+## ⚠️ Security Notice
+
+[**VirusTotal Scan Result**](https://www.virustotal.com/gui/file/255c0e961cb68b54899039793374659df07ffde1cd7025478bd85bd58b1128d6)
+
+**Regarding Bkav Pro's Analysis:** `Catherine.exe` is compiled as a self-contained single-file executable that carries the emulator inside its code. Overly aggressive machine-learning scanners (like Bkav) see an `.exe` containing an embedded archive and flag it as a generic heuristic false positive.
+
+This installer/launcher will **NEVER** ask you to disable Windows Defender, add an antivirus exclusion folder, or paste a command into PowerShell. If anyone in a comment, Discord DM, or GitHub issue tells you to run an `irm | iex` command for a "fix," it is malware.
