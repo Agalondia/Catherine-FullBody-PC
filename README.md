@@ -50,7 +50,7 @@ You can rebind any key directly inside the launcher by clicking **⌨ Customize 
 ## 💡 Useful Tips
 * **Reopening the Launcher:** If you enabled *"Launch directly next time"* and want to open the launcher settings again, **hold `Shift`** while double-clicking your desktop shortcut.
 * **Exiting the Game:** Because console games do not have an "Exit to Desktop" menu button, press **`Alt + F4`** on your keyboard to safely close the game.
-* **60+ FPS Support:** The game engine's puzzle physics are natively tied to a 30 Hz tick rate. For smooth 60/120 FPS without breaking block physics, use **Lossless Scaling (LSFG)** or driver-level **AMD AFMF**.
+* **Regarding the 30 FPS Lock:** The game engine's puzzle physics are natively tied to a 30 Hz tick rate. For smooth 60/120 FPS without breaking block physics, use **Lossless Scaling (LSFG)** or driver-level **AMD AFMF**.
 
 ## 🙏 Credits & Disclaimer
 * Powered by [**shadPS4**](https://github.com/shadps4-emu/shadPS4) and **shadPS4Plus `pkg_extractor`**.
