@@ -55,3 +55,9 @@ You can rebind any key directly inside the launcher by clicking **⌨ Customize 
 ## 🙏 Credits & Disclaimer
 * Powered by [**shadPS4**](https://github.com/shadps4-emu/shadPS4) and **shadPS4Plus `pkg_extractor`**.
 * **Legal Notice:** This tool contains **zero** copyrighted Atlus/Sega game assets, ROMs, or proprietary Sony keys. You must provide your own legally dumped PlayStation 4 `.pkg` files to use this software.
+
+## 🛠️ Building from Source
+If compiling from source code using `.NET 8 SDK`:
+1. Place a 7-second MP4 named `intro.mp4` in a folder named `Launcher/`.
+2. Compress your configured shadPS4 folder into `Engine.zip` inside the `Launcher/` folder.
+3. Run `dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true`.
