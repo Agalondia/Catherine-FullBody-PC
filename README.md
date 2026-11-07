@@ -1,1 +1,52 @@
-# Catherine-FullBody-PC
+# Catherine: Full Body — PC Installer & Launcher
+
+A standalone, all-in-one Windows installer and launcher wrapper that turns your legally dumped PS4 `.pkg` files of **Catherine: Full Body** (`CUSA14836`) into a seamless, native-feeling PC installation.
+
+## ✨ Features
+* **True All-in-One Setup:** Automatically unpacks your Base Game `.pkg`, merges the Update Patch `.pkg`, and batch-installs all DLC `.pkg` files into a clean `Data\` directory.
+* **Built-In Keybind Menu:** Customize all keyboard bindings (including primary keys and secondary Numpad slots) directly inside the launcher.
+* **Zero Emulator Clutter:** Boots directly into borderless fullscreen with AMD FSR + RCAS sharpening enabled and all debug console windows suppressed.
+* **Built-In Fast Boot Toggle:** Includes a 1-click toggle to skip the startup company logos and jump straight to the title screen.
+* **Direct-Boot Mode:** Check *"Launch directly next time"* to bypass the launcher completely on future boots.
+
+## 🚀 How to Install & Play
+1. Download **`Catherine.exe`** from the [**Releases**](../../releases) page.
+2. Run `Catherine.exe` and choose your installation folder (defaults to `C:\Games\Catherine Full Body`).
+3. Select your dumped **Base Game PKG**, optional **Update Patch PKG**, and optional **DLC Folder**.
+4. Click **Start Installation** (takes ~3–5 minutes depending on your SSD speed).
+5. Use the newly created **Catherine - Full Body** desktop shortcut to play!
+
+---
+
+## 🎮 Controls (Controller & Keyboard)
+
+### 1. Controller (Recommended — Plug & Play)
+**Xbox, PlayStation (DualShock 4 / DualSense), and Switch Pro controllers** are detected automatically out of the box—just plug in or connect via Bluetooth before launching.
+
+### 2. Keyboard Controls (Customizable in Launcher)
+You can rebind any key directly inside the launcher by clicking **⌨ Customize Keyboard Controls**, or use the default layout below:
+
+| PlayStation Input | Main Keyboard Key | Alt / Numpad Key | In-Game Action |
+| :--- | :--- | :--- | :--- |
+| **Left Stick / D-Pad** | **`W` `A` `S` `D`** | **Arrow Keys** | Move Vincent / Navigate Menus |
+| **Cross (`✕`)** | **`N`** | **`NUM 2`** | Confirm / Climb / Select |
+| **Circle (`○`)** | **`B`** | **`NUM 6`** | Cancel / Back |
+| **Square (`□`)** | **`V`** | **`NUM 4`** | **Grab / Push / Pull Blocks** |
+| **Triangle (`△`)** | **`C`** | **`NUM 8`** | Use Item / Open Cell Phone |
+| **L1** | **`Q`** | — | **Undo Last Move (Rewind)** |
+| **R1** | **`U`** | — | Toggle Camera / Auto-Climb |
+| **L2 / R2** | **`E`** / **`O`** | — | Look / Pan Puzzle Camera |
+| **Options (Start)** | **`Enter`** | — | Pause Menu / Skip Cutscenes |
+| **Touchpad** | **`Spacebar`** | — | Touchpad Button |
+| **Exit Game** | **`Alt + F4`** | — | Safely Close Game to Desktop |
+
+---
+
+## 💡 Useful Tips
+* **Reopening the Launcher:** If you enabled *"Launch directly next time"* and want to open the launcher settings again, **hold `Shift`** while double-clicking your desktop shortcut.
+* **Exiting the Game:** Because console games do not have an "Exit to Desktop" menu button, press **`Alt + F4`** on your keyboard to safely close the game.
+* **60+ FPS Support:** The game engine's puzzle physics are natively tied to a 30 Hz tick rate. For smooth 60/120 FPS without breaking block physics, use **Lossless Scaling (LSFG)** or driver-level **AMD AFMF**.
+
+## 🙏 Credits & Disclaimer
+* Powered by [**shadPS4**](https://github.com/shadps4-emu/shadPS4) and **shadPS4Plus `pkg_extractor`**.
+* **Legal Notice:** This tool contains **zero** copyrighted Atlus/Sega game assets, ROMs, or proprietary Sony keys. You must provide your own legally dumped PlayStation 4 `.pkg` files to use this software.
