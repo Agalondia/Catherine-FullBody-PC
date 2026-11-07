@@ -4,7 +4,7 @@
 
 A standalone, all-in-one Windows installer and launcher wrapper that turns your legally dumped PS4 `.pkg` files of **Catherine: Full Body** (`CUSA14836`) into a seamless, native-feeling PC installation.
 
-[**Video Showcase.**](https://youtu.be/B8CBTJt_KrA?si=XY2VCjJizXVeSSIO)
+[**Video Showcase**](https://youtu.be/B8CBTJt_KrA?si=XY2VCjJizXVeSSIO).
 
 ## ✨ Features
 * **True All-in-One Setup:** Automatically unpacks your Base Game `.pkg`, merges the Update Patch `.pkg`, and batch-installs all DLC `.pkg` files into a clean `Data\` directory.
