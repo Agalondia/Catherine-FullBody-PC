@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -7,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -29,6 +31,7 @@ public partial class MainForm : Form
     private string patchXmlPath;
     private string configJsonPath;
     private string launcherSettingsPath;
+    private string inputConfigDir;
 
     // Layout
     private Panel pnlUI = null!;
@@ -37,11 +40,13 @@ public partial class MainForm : Form
     // Views
     private Panel pnlLauncher = null!;
     private Panel pnlInstaller = null!;
+    private Panel pnlKeybinds = null!;
 
     // UI Elements
     private Button btnPlay = null!;
     private CheckBox chkSkipIntro = null!;
     private CheckBox chkSkipLauncher = null!;
+    private Button btnOpenKeybinds = null!;
     private Button btnCreateShortcut = null!;
     private Button btnShowInstall = null!;
 
@@ -55,6 +60,11 @@ public partial class MainForm : Form
     private ProgressBar progressBar = null!;
     private CancellationTokenSource? extractionCts;
 
+    // Keybind State
+    private readonly Dictionary<string, string> keybinds = new();
+    private readonly Dictionary<string, Button> keybindButtons = new();
+    private string? activeRebindAction = null;
+
     public MainForm()
     {
         string exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
@@ -66,18 +76,14 @@ public partial class MainForm : Form
         patchXmlPath = Path.Combine(engineDir, "User", "patches", "shadPS4", "Catherine_FullBody.xml");
         configJsonPath = Path.Combine(engineDir, "User", "config.json");
         launcherSettingsPath = Path.Combine(engineDir, "User", "launcher_settings.json");
+        inputConfigDir = Path.Combine(engineDir, "User", "input_config");
 
+        ResetDefaultKeybindsInMemory();
         InitializeModernLayout();
         ApplyDarkTitleBar();
         RefreshViewState();
+        LoadKeybindsFromDisk();
 
-        // Puts the black video screen on top BEFORE the window ever appears on your monitor!
-        PlaySplashIntro();
-    }
-
-    protected override void OnShown(EventArgs e)
-    {
-        base.OnShown(e);
         PlaySplashIntro();
     }
 
@@ -86,9 +92,38 @@ public partial class MainForm : Form
         try { int darkMode = 1; DwmSetWindowAttribute(Handle, 20, ref darkMode, sizeof(int)); } catch { }
     }
 
+    // Intercepts ALL keyboard keys (including Space, Enter, and Arrow Keys) when rebinding!
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (activeRebindAction != null)
+        {
+            Keys keyOnly = keyData & Keys.KeyCode;
+            if (keyOnly != Keys.Escape)
+            {
+                string mapped = MapKeyToShadPs4(keyOnly);
+                if (!string.IsNullOrEmpty(mapped))
+                {
+                    keybinds[activeRebindAction] = mapped;
+                    SaveKeybindsToDisk();
+                }
+            }
+
+            string action = activeRebindAction;
+            activeRebindAction = null;
+            if (keybindButtons.TryGetValue(action, out var btn))
+            {
+                btn.Text = FormatKeyForDisplay(keybinds[action]);
+                btn.BackColor = Color.FromArgb(40, 40, 48);
+            }
+            return true;
+        }
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
     private void InitializeModernLayout()
     {
         Text = "Catherine: Full Body";
+        DoubleBuffered = true;
         ClientSize = new Size(887, 500); 
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -133,7 +168,7 @@ public partial class MainForm : Form
         // =========================================================
         pnlInstaller = new Panel { Dock = DockStyle.Fill, Visible = false, BackColor = Color.Transparent };
 
-        var lblInstallHeader = new Label { Text = "INSTALLATION SETUP", Font = new Font("Segoe UI", 15, FontStyle.Bold), ForeColor = Color.FromArgb(241, 42, 161), Location = new Point(18, 20), AutoSize = true };
+        var lblInstallHeader = new Label { Text = "SETUP & INSTALLATION", Font = new Font("Segoe UI", 15, FontStyle.Bold), ForeColor = Color.FromArgb(241, 42, 161), Location = new Point(18, 20), AutoSize = true };
         var lblInstallSub = new Label { Text = "Select your dumped PS4 files to prepare the PC edition.", Font = new Font("Segoe UI", 8.5f), ForeColor = Color.FromArgb(156, 163, 175), Location = new Point(20, 48), AutoSize = true };
 
         var pnlCardInstall = CreateCardPanel(18, 78, 350, 240);
@@ -204,39 +239,389 @@ public partial class MainForm : Form
         // =========================================================
         pnlLauncher = new Panel { Dock = DockStyle.Fill, Visible = false, BackColor = Color.Transparent };
 
-        var lblMainTitle = new Label { Text = "CATHERINE", Font = new Font("Segoe UI Black", 26, FontStyle.Bold), ForeColor = Color.FromArgb(241, 42, 161), Location = new Point(15, 20), AutoSize = true };
-        var lblMainSub = new Label { Text = "FULL BODY  •  PC EDITION", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Color.FromArgb(255, 140, 190), Location = new Point(22, 65), AutoSize = true };
+        var lblMainTitle = new Label { Text = "CATHERINE", Font = new Font("Segoe UI Black", 26, FontStyle.Bold), ForeColor = Color.FromArgb(241, 42, 161), Location = new Point(15, 18), AutoSize = true };
+        var lblMainSub = new Label { Text = "FULL BODY  •  PC EDITION", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Color.FromArgb(255, 140, 190), Location = new Point(22, 62), AutoSize = true };
 
-        btnPlay = CreatePrimaryButton("▶   PLAY GAME", 18, 105, 350, 64);
+        btnPlay = CreatePrimaryButton("▶   PLAY GAME", 18, 95, 350, 60);
         btnPlay.Font = new Font("Segoe UI", 16, FontStyle.Bold);
         btnPlay.Click += (s, e) => { SaveLauncherSetting(); LaunchGame(baseDir); Close(); };
 
-        var pnlCardOptions = CreateCardPanel(18, 190, 350, 95);
-        chkSkipIntro = new CheckBox { Text = "Skip Intro Logos (Direct to Title)", Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), ForeColor = Color.FromArgb(243, 244, 246), Location = new Point(16, 22), AutoSize = true };
+        var pnlCardOptions = CreateCardPanel(18, 172, 350, 90);
+        chkSkipIntro = new CheckBox { Text = "Skip Intro Logos (Direct to Title)", Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), ForeColor = Color.FromArgb(243, 244, 246), Location = new Point(16, 18), AutoSize = true };
         chkSkipIntro.CheckedChanged += (s, e) => SavePatchSetting();
-        chkSkipLauncher = new CheckBox { Text = "Launch directly next time (Hold Shift)", Font = new Font("Segoe UI", 8.5f), ForeColor = Color.FromArgb(156, 163, 175), Location = new Point(16, 58), AutoSize = true };
+        chkSkipLauncher = new CheckBox { Text = "Launch directly next time (Hold Shift)", Font = new Font("Segoe UI", 8.5f), ForeColor = Color.FromArgb(156, 163, 175), Location = new Point(16, 52), AutoSize = true };
         chkSkipLauncher.CheckedChanged += (s, e) => SaveLauncherSetting();
         pnlCardOptions.Controls.Add(chkSkipIntro);
         pnlCardOptions.Controls.Add(chkSkipLauncher);
 
-        btnCreateShortcut = CreateSecondaryButton("📌  Desktop Shortcut", 18, 305, 170, 42);
+        btnOpenKeybinds = CreateSecondaryButton("⌨  Customize Keyboard Controls", 18, 276, 350, 40);
+        btnOpenKeybinds.Click += (s, e) => {
+            LoadKeybindsFromDisk();
+            ShowPanel(pnlKeybinds);
+        };
+
+        btnCreateShortcut = CreateSecondaryButton("📌  Desktop Shortcut", 18, 326, 170, 40);
         btnCreateShortcut.Click += (s, e) => {
             InstallerWorker.CreateDesktopShortcut(Path.Combine(baseDir, "Catherine.exe"), "Catherine - Full Body");
             MessageBox.Show("Desktop shortcut created successfully!", "Shortcut", MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
 
-        btnShowInstall = CreateSecondaryButton("⚙  Reinstall / DLC", 198, 305, 170, 42);
-        btnShowInstall.Click += (s, e) => SwitchToView(showInstaller: true);
+        btnShowInstall = CreateSecondaryButton("⚙  Reinstall / DLC", 198, 326, 170, 40);
+        btnShowInstall.Click += (s, e) => ShowPanel(pnlInstaller);
 
-        var lblFooter = new Label { Text = "Running natively via shadPS4 wrapper", Font = new Font("Segoe UI", 8), ForeColor = Color.FromArgb(107, 114, 128), Location = new Point(18, 370), AutoSize = true };
+        var lblFooter = new Label { Text = "Controller Supported • Press Alt+F4 to Exit", Font = new Font("Segoe UI", 8), ForeColor = Color.FromArgb(107, 114, 128), Location = new Point(18, 460), AutoSize = true };
 
-        pnlLauncher.Controls.AddRange(new Control[] { lblMainTitle, lblMainSub, btnPlay, pnlCardOptions, btnCreateShortcut, btnShowInstall, lblFooter });
+        pnlLauncher.Controls.AddRange(new Control[] { lblMainTitle, lblMainSub, btnPlay, pnlCardOptions, btnOpenKeybinds, btnCreateShortcut, btnShowInstall, lblFooter });
+
+        // =========================================================
+        // 3. KEYBOARD REBIND VIEW (With Primary + Alt/Numpad Columns!)
+        // =========================================================
+        pnlKeybinds = new Panel { Dock = DockStyle.Fill, Visible = false, BackColor = Color.Transparent };
+
+        var lblKeyTitle = new Label { Text = "KEYBOARD CONTROLS", Font = new Font("Segoe UI", 15, FontStyle.Bold), ForeColor = Color.FromArgb(241, 42, 161), Location = new Point(18, 18), AutoSize = true };
+        var lblKeySub = new Label { Text = "Click any slot (Main or Alt/Numpad), then press a key.", Font = new Font("Segoe UI", 8.5f), ForeColor = Color.FromArgb(156, 163, 175), Location = new Point(20, 45), AutoSize = true };
+
+        var pnlKeyList = CreateCardPanel(18, 72, 350, 350);
+        pnlKeyList.AutoScroll = true;
+
+        var bindDefinitions = new (string KeyId, string? AltKeyId, string LabelText)[]
+        {
+            ("cross", "cross_alt", "Confirm / Climb (✕)"),
+            ("circle", "circle_alt", "Cancel / Back (○)"),
+            ("square", "square_alt", "Grab / Push (□)"),
+            ("triangle", "triangle_alt", "Item / Phone (△)"),
+            ("l1", null, "Undo / Rewind (L1)"),
+            ("r1", null, "Camera / Auto (R1)"),
+            ("l2", null, "Rotate Left (L2)"),
+            ("r2", null, "Rotate Right (R2)"),
+            ("axis_left_y_minus", null, "Move Up (Stick)"),
+            ("axis_left_y_plus", null, "Move Down (Stick)"),
+            ("axis_left_x_minus", null, "Move Left (Stick)"),
+            ("axis_left_x_plus", null, "Move Right (Stick)"),
+            ("pad_up", null, "D-Pad Up"),
+            ("pad_down", null, "D-Pad Down"),
+            ("pad_left", null, "D-Pad Left"),
+            ("pad_right", null, "D-Pad Right"),
+            ("options", null, "Pause / Skip (Start)"),
+            ("touchpad_center", null, "Touchpad Click")
+        };
+
+        int rowY = 12;
+        foreach (var (keyId, altKeyId, labelText) in bindDefinitions)
+        {
+            var lbl = new Label
+            {
+                Text = labelText,
+                Font = new Font("Segoe UI", 9f, FontStyle.Regular),
+                ForeColor = Color.FromArgb(229, 231, 235),
+                Location = new Point(10, rowY + 5),
+                AutoSize = true
+            };
+            pnlKeyList.Controls.Add(lbl);
+
+            if (altKeyId != null)
+            {
+                // Two side-by-side buttons: [Main Key] and [Numpad / Alt Key]
+                var btnMain = CreateRebindButton(keyId, 170, rowY, 72);
+                var btnAlt = CreateRebindButton(altKeyId, 248, rowY, 72);
+                pnlKeyList.Controls.Add(btnMain);
+                pnlKeyList.Controls.Add(btnAlt);
+            }
+            else
+            {
+                var btnSingle = CreateRebindButton(keyId, 170, rowY, 150);
+                pnlKeyList.Controls.Add(btnSingle);
+            }
+
+            rowY += 36;
+        }
+
+        var btnBackFromKeys = CreatePrimaryButton("←  DONE", 18, 435, 220, 42);
+        btnBackFromKeys.Click += (s, e) =>
+        {
+            activeRebindAction = null;
+            SaveKeybindsToDisk();
+            ShowPanel(pnlLauncher);
+        };
+
+        var btnResetKeys = CreateSecondaryButton("Reset Defaults", 248, 435, 120, 42);
+        btnResetKeys.Click += (s, e) =>
+        {
+            activeRebindAction = null;
+            ResetDefaultKeybindsInMemory();
+            SaveKeybindsToDisk();
+            RefreshKeybindButtonLabels();
+        };
+
+        pnlKeybinds.Controls.AddRange(new Control[] { lblKeyTitle, lblKeySub, pnlKeyList, btnBackFromKeys, btnResetKeys });
 
         pnlUI.Controls.Add(pnlInstaller);
         pnlUI.Controls.Add(pnlLauncher);
+        pnlUI.Controls.Add(pnlKeybinds);
     }
 
-    // Forces Windows to build all buttons and textboxes in memory even while covered by the video!
+    private Button CreateRebindButton(string capturedId, int x, int y, int width)
+    {
+        var btn = new Button
+        {
+            Text = FormatKeyForDisplay(keybinds[capturedId]),
+            Location = new Point(x, y),
+            Size = new Size(width, 28),
+            BackColor = Color.FromArgb(40, 40, 48),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Cursor = Cursors.Hand
+        };
+        btn.FlatAppearance.BorderSize = 1;
+        btn.FlatAppearance.BorderColor = Color.FromArgb(63, 63, 70);
+
+        btn.Click += (s, e) =>
+        {
+            if (activeRebindAction != null && keybindButtons.TryGetValue(activeRebindAction, out var prevBtn))
+            {
+                prevBtn.Text = FormatKeyForDisplay(keybinds[activeRebindAction]);
+                prevBtn.BackColor = Color.FromArgb(40, 40, 48);
+            }
+
+            activeRebindAction = capturedId;
+            btn.Text = "Press...";
+            btn.BackColor = Color.FromArgb(241, 42, 161);
+        };
+
+        keybindButtons[capturedId] = btn;
+        return btn;
+    }
+
+    // --- Keybind Management ---
+
+    private void ResetDefaultKeybindsInMemory()
+    {
+        // Primary keyboard face buttons
+        keybinds["triangle"] = "c";
+        keybinds["circle"] = "b";
+        keybinds["cross"] = "n";
+        keybinds["square"] = "v";
+
+        // Secondary / Numpad face buttons
+        keybinds["triangle_alt"] = "kp8";
+        keybinds["circle_alt"] = "kp6";
+        keybinds["cross_alt"] = "kp2";
+        keybinds["square_alt"] = "kp4";
+
+        keybinds["l1"] = "q";
+        keybinds["r1"] = "u";
+        keybinds["l2"] = "e";
+        keybinds["r2"] = "o";
+        keybinds["l3"] = "x";
+        keybinds["r3"] = "m";
+        keybinds["options"] = "enter";
+        keybinds["touchpad_center"] = "space";
+        keybinds["pad_up"] = "up";
+        keybinds["pad_down"] = "down";
+        keybinds["pad_left"] = "left";
+        keybinds["pad_right"] = "right";
+        keybinds["axis_left_x_minus"] = "a";
+        keybinds["axis_left_x_plus"] = "d";
+        keybinds["axis_left_y_minus"] = "w";
+        keybinds["axis_left_y_plus"] = "s";
+        keybinds["axis_right_x_minus"] = "j";
+        keybinds["axis_right_x_plus"] = "l";
+        keybinds["axis_right_y_minus"] = "i";
+        keybinds["axis_right_y_plus"] = "k";
+    }
+
+    private void RefreshKeybindButtonLabels()
+    {
+        foreach (var kvp in keybindButtons)
+        {
+            if (keybinds.TryGetValue(kvp.Key, out string? val))
+            {
+                kvp.Value.Text = FormatKeyForDisplay(val);
+                kvp.Value.BackColor = Color.FromArgb(40, 40, 48);
+            }
+        }
+    }
+
+    private void LoadKeybindsFromDisk()
+    {
+        try
+        {
+            string file = Path.Combine(inputConfigDir, "default.ini");
+            if (!File.Exists(file)) file = Path.Combine(inputConfigDir, "global.ini");
+            if (!File.Exists(file)) return;
+
+            var seenFaceButtons = new HashSet<string>();
+
+            foreach (string rawLine in File.ReadAllLines(file))
+            {
+                string line = rawLine.Trim();
+                if (line.StartsWith("# Controller bindings", StringComparison.OrdinalIgnoreCase))
+                    break;
+
+                if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
+                int eq = line.IndexOf('=');
+                if (eq <= 0) continue;
+
+                string k = line.Substring(0, eq).Trim();
+                string v = line.Substring(eq + 1).Trim();
+
+                if (k is "triangle" or "circle" or "cross" or "square")
+                {
+                    // First occurrence in default.ini is the Numpad/Alt bind, second is the Main bind!
+                    if (seenFaceButtons.Add(k))
+                        keybinds[k + "_alt"] = v;
+                    else
+                        keybinds[k] = v;
+                }
+                else if (keybinds.ContainsKey(k))
+                {
+                    keybinds[k] = v;
+                }
+            }
+            RefreshKeybindButtonLabels();
+        }
+        catch { }
+    }
+
+    private void SaveKeybindsToDisk()
+    {
+        try
+        {
+            Directory.CreateDirectory(inputConfigDir);
+            var sb = new StringBuilder();
+            sb.AppendLine("#Feeling lost? Check out the Help section!");
+            sb.AppendLine();
+            sb.AppendLine("# Keyboard bindings");
+            sb.AppendLine();
+            sb.AppendLine($"triangle = {keybinds["triangle_alt"]}");
+            sb.AppendLine($"circle = {keybinds["circle_alt"]}");
+            sb.AppendLine($"cross = {keybinds["cross_alt"]}");
+            sb.AppendLine($"square = {keybinds["square_alt"]}");
+            sb.AppendLine("# Alternatives for users without a keypad");
+            sb.AppendLine($"triangle = {keybinds["triangle"]}");
+            sb.AppendLine($"circle = {keybinds["circle"]}");
+            sb.AppendLine($"cross = {keybinds["cross"]}");
+            sb.AppendLine($"square = {keybinds["square"]}");
+            sb.AppendLine();
+            sb.AppendLine($"l1 = {keybinds["l1"]}");
+            sb.AppendLine($"r1 = {keybinds["r1"]}");
+            sb.AppendLine($"l2 = {keybinds["l2"]}");
+            sb.AppendLine($"r2 = {keybinds["r2"]}");
+            sb.AppendLine($"l3 = {keybinds["l3"]}");
+            sb.AppendLine($"r3 = {keybinds["r3"]}");
+            sb.AppendLine();
+            sb.AppendLine($"options = {keybinds["options"]}");
+            sb.AppendLine($"touchpad_center = {keybinds["touchpad_center"]}");
+            sb.AppendLine();
+            sb.AppendLine($"pad_up = {keybinds["pad_up"]}");
+            sb.AppendLine($"pad_down = {keybinds["pad_down"]}");
+            sb.AppendLine($"pad_left = {keybinds["pad_left"]}");
+            sb.AppendLine($"pad_right = {keybinds["pad_right"]}");
+            sb.AppendLine();
+            sb.AppendLine($"axis_left_x_minus = {keybinds["axis_left_x_minus"]}");
+            sb.AppendLine($"axis_left_x_plus = {keybinds["axis_left_x_plus"]}");
+            sb.AppendLine($"axis_left_y_minus = {keybinds["axis_left_y_minus"]}");
+            sb.AppendLine($"axis_left_y_plus = {keybinds["axis_left_y_plus"]}");
+            sb.AppendLine();
+            sb.AppendLine($"axis_right_x_minus = {keybinds["axis_right_x_minus"]}");
+            sb.AppendLine($"axis_right_x_plus = {keybinds["axis_right_x_plus"]}");
+            sb.AppendLine($"axis_right_y_minus = {keybinds["axis_right_y_minus"]}");
+            sb.AppendLine($"axis_right_y_plus = {keybinds["axis_right_y_plus"]}");
+            sb.AppendLine();
+            sb.AppendLine("# Controller bindings");
+            sb.AppendLine();
+            sb.AppendLine("triangle = triangle");
+            sb.AppendLine("cross = cross");
+            sb.AppendLine("square = square");
+            sb.AppendLine("circle = circle");
+            sb.AppendLine();
+            sb.AppendLine("l1 = l1");
+            sb.AppendLine("l2 = l2");
+            sb.AppendLine("l3 = l3");
+            sb.AppendLine("r1 = r1");
+            sb.AppendLine("r2 = r2");
+            sb.AppendLine("r3 = r3");
+            sb.AppendLine();
+            sb.AppendLine("options = options");
+            sb.AppendLine("touchpad_center = back");
+            sb.AppendLine();
+            sb.AppendLine("pad_up = pad_up");
+            sb.AppendLine("pad_down = pad_down");
+            sb.AppendLine("pad_left = pad_left");
+            sb.AppendLine("pad_right = pad_right");
+            sb.AppendLine();
+            sb.AppendLine("axis_left_x = axis_left_x");
+            sb.AppendLine("axis_left_y = axis_left_y");
+            sb.AppendLine("axis_right_x = axis_right_x");
+            sb.AppendLine("axis_right_y = axis_right_y");
+            sb.AppendLine();
+            sb.AppendLine("# Range of deadzones: 1 (almost none) to 127 (max)");
+            sb.AppendLine("analog_deadzone = leftjoystick, 5, 127");
+            sb.AppendLine("analog_deadzone = rightjoystick, 5, 127");
+            sb.AppendLine();
+            sb.AppendLine("override_controller_color = false, 0, 0, 255");
+
+            string content = sb.ToString();
+            File.WriteAllText(Path.Combine(inputConfigDir, "default.ini"), content);
+            File.WriteAllText(Path.Combine(inputConfigDir, "global.ini"), content);
+            File.WriteAllText(Path.Combine(inputConfigDir, "CUSA14836.ini"), content);
+        }
+        catch { }
+    }
+
+    private static string FormatKeyForDisplay(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "";
+        string lower = raw.Trim().ToLowerInvariant();
+
+        // Translates "kp0"-"kp9" into "NUM 0"-"NUM 9" for the UI!
+        if (lower.StartsWith("kp") && lower.Length == 3 && char.IsDigit(lower[2]))
+        {
+            return "NUM " + lower[2];
+        }
+
+        return lower switch
+        {
+            "lshift" => "L-SHIFT",
+            "rshift" => "R-SHIFT",
+            "lctrl" => "L-CTRL",
+            "rctrl" => "R-CTRL",
+            "lalt" => "L-ALT",
+            "ralt" => "R-ALT",
+            "backspace" => "BACK",
+            _ => raw.ToUpperInvariant()
+        };
+    }
+
+    private static string MapKeyToShadPs4(Keys key)
+    {
+        if (key >= Keys.A && key <= Keys.Z) return key.ToString().ToLowerInvariant();
+        if (key >= Keys.D0 && key <= Keys.D9) return ((int)(key - Keys.D0)).ToString();
+        if (key >= Keys.NumPad0 && key <= Keys.NumPad9) return "kp" + ((int)(key - Keys.NumPad0));
+
+        return key switch
+        {
+            Keys.Return => "enter",
+            Keys.Space => "space",
+            Keys.Back => "backspace",
+            Keys.Tab => "tab",
+            Keys.Up => "up",
+            Keys.Down => "down",
+            Keys.Left => "left",
+            Keys.Right => "right",
+            Keys.ShiftKey or Keys.LShiftKey => "lshift",
+            Keys.RShiftKey => "rshift",
+            Keys.ControlKey or Keys.LControlKey => "lctrl",
+            Keys.RControlKey => "rctrl",
+            Keys.Menu or Keys.LMenu => "lalt",
+            Keys.RMenu => "ralt",
+            _ => key.ToString().ToLowerInvariant()
+        };
+    }
+
+    // --- Splash Intro & Vee Wipe ---
+
     private static void EnsureHandlesCreated(Control parent)
     {
         if (!parent.Visible) return;
@@ -263,7 +648,6 @@ public partial class MainForm : Form
                 rawStream.CopyTo(fs);
             }
 
-            // 1. Keep the UI snapshot HIDDEN at the start so the window opens 100% pure black!
             var wpfUiImage = new System.Windows.Controls.Image
             {
                 Width = 887,
@@ -337,7 +721,6 @@ public partial class MainForm : Form
                 if (isWiping || isFinished) return;
                 isWiping = true;
 
-                // 2. Right as the Vee Wipe begins, force all buttons/fields to build and take the snapshot!
                 EnsureHandlesCreated(pbArt);
                 EnsureHandlesCreated(pnlUI);
 
@@ -358,7 +741,6 @@ public partial class MainForm : Form
                     wpfUiImage.Source = bmpImg;
                 }
 
-                // Unhide the snapshot right behind the video and start slicing!
                 wpfUiImage.Visibility = System.Windows.Visibility.Visible;
                 veeBorder.Visibility = System.Windows.Visibility.Visible;
                 wipeTimer.Start();
@@ -455,14 +837,15 @@ public partial class MainForm : Form
     private void RefreshViewState()
     {
         bool isInstalled = File.Exists(Path.Combine(gameDir, "eboot.bin"));
-        SwitchToView(showInstaller: !isInstalled);
+        ShowPanel(isInstalled ? pnlLauncher : pnlInstaller);
         LoadCurrentSettings();
     }
 
-    private void SwitchToView(bool showInstaller)
+    private void ShowPanel(Panel target)
     {
-        pnlInstaller.Visible = showInstaller;
-        pnlLauncher.Visible = !showInstaller;
+        pnlInstaller.Visible = (target == pnlInstaller);
+        pnlLauncher.Visible = (target == pnlLauncher);
+        pnlKeybinds.Visible = (target == pnlKeybinds);
     }
 
     private async Task StartInstallationProcessAsync()
